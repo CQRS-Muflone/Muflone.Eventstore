@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Version>0.8.1</Version>
+    <Company>CQRS-Muflone</Company>
+    <Authors>Iridio</Authors>
+    <Description>Muflone repository and event dispatcher for Event Store</Description>
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageTags>Eventstore, CQRS, Muflone</PackageTags>
+    <Copyright>CQRS-Muflone</Copyright>
+    <PackageLicenseUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EventStore.ClientAPI.NetCore" Version="4.1.0.23" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.1" />
+    <PackageReference Include="Muflone" Version="0.8.1.1" />
+  </ItemGroup>
+
+</Project>
