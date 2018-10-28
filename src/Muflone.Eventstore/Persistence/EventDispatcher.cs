@@ -7,6 +7,8 @@ using EventStore.ClientAPI;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Muflone.Messages.Events;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Muflone.Eventstore.Persistence
@@ -19,19 +21,19 @@ namespace Muflone.Eventstore.Persistence
     private const int LiveQueueSizeLimit = 10000;
 
     private readonly IEventBus eventBus;
-    private readonly IEventStorePositionRepository eventStorePositionRepository;
     private readonly IEventStoreConnection eventStoreConnection;
-    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new ConcurrentQueue<ResolvedEvent>();
-    private readonly ManualResetEventSlim liveDone = new ManualResetEventSlim(true);
-    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new ConcurrentQueue<ResolvedEvent>();
+    private readonly IEventStorePositionRepository eventStorePositionRepository;
     private readonly ManualResetEventSlim historicalDone = new ManualResetEventSlim(true);
-
-    private volatile bool stop;
-    private volatile bool livePublishingAllowed;
+    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new ConcurrentQueue<ResolvedEvent>();
+    private readonly ManualResetEventSlim liveDone = new ManualResetEventSlim(true);
+    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new ConcurrentQueue<ResolvedEvent>();
+    private readonly ILogger log;
+    private EventStoreSubscription eventStoreSubscription;
     private int isPublishing;
     private Position lastProcessed;
-    private EventStoreSubscription eventStoreSubscription;
-    private readonly ILogger log;
+    private volatile bool livePublishingAllowed;
+
+    private volatile bool stop;
 
     public EventDispatcher(ILoggerFactory loggerFactory, IEventStoreConnection store, IEventBus eventBus, IEventStorePositionRepository eventStorePositionRepository)
     {
@@ -39,7 +41,18 @@ namespace Muflone.Eventstore.Persistence
       eventStoreConnection = store ?? throw new ArgumentNullException(nameof(store));
       this.eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
       this.eventStorePositionRepository = eventStorePositionRepository;
-      lastProcessed = eventStorePositionRepository.GetLastPosition().GetAwaiter().GetResult();
+      var position = eventStorePositionRepository.GetLastPosition().GetAwaiter().GetResult();
+      lastProcessed = new Position(position.CommitPosition, position.PreparePosition);
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+      return StartDispatching();
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+      return StopDispatching();
     }
 
     // Credit algorithm to Szymon Pobiega
@@ -79,7 +92,6 @@ namespace Muflone.Eventstore.Persistence
 
       livePublishingAllowed = true;
       EnsurePublishEvents(liveQueue, liveDone);
-
     }
 
     public Task StopDispatching()
@@ -102,14 +114,12 @@ namespace Muflone.Eventstore.Persistence
       AllEventsSlice slice;
       while (!stop && (slice = await eventStoreConnection.ReadAllEventsForwardAsync(position, ReadPageSize, false)).Events.Length > 0)
       {
-        foreach (var rawEvent in slice.Events)
-        {
-          historicalQueue.Enqueue(rawEvent);
-        }
+        foreach (var rawEvent in slice.Events) historicalQueue.Enqueue(rawEvent);
         EnsurePublishEvents(historicalQueue, historicalDone);
 
         position = slice.NextPosition;
       }
+
       return position;
     }
 
@@ -143,10 +153,7 @@ namespace Muflone.Eventstore.Persistence
       liveQueue.Enqueue(resolvedEvent);
 
       //Prevent live queue memory explosion.
-      if (!livePublishingAllowed && liveQueue.Count > LiveQueueSizeLimit)
-      {
-        liveQueue.TryDequeue(out var throwAwayEvent);
-      }
+      if (!livePublishingAllowed && liveQueue.Count > LiveQueueSizeLimit) liveQueue.TryDequeue(out var throwAwayEvent);
 
       if (livePublishingAllowed)
         EnsurePublishEvents(liveQueue, liveDone);
@@ -173,10 +180,12 @@ namespace Muflone.Eventstore.Persistence
           Interlocked.CompareExchange(ref isPublishing, 0, 1);
           return;
         }
+
         ResolvedEvent @event;
         while (!stop && queue.TryDequeue(out @event))
         {
-          if (!(@event.OriginalPosition > lastProcessed)) continue;
+          if (!(@event.OriginalPosition > lastProcessed))
+            continue;
 
           var processedEvent = ProcessRawEvent(@event);
           if (processedEvent != null)
@@ -185,10 +194,12 @@ namespace Muflone.Eventstore.Persistence
             processedEvent.Headers.Set(Constants.PreparePosition, @event.OriginalPosition.Value.PreparePosition.ToString());
             eventBus.Publish(processedEvent);
           }
+
           lastProcessed = @event.OriginalPosition.Value;
-          //TODO: Should be moved in the event handlers to be sure the event is persisted and then the counter updated?
-          eventStorePositionRepository.Save(lastProcessed.CommitPosition, lastProcessed.PreparePosition);
+          //TODO: Should be moved to the event handlers to be sure that only when the events are persisted the counters will be updated?
+          eventStorePositionRepository.Save(new EventStorePosition(lastProcessed.CommitPosition, lastProcessed.PreparePosition));
         }
+
         doneEvent.Set(); // signal end of processing particular queue
         Interlocked.CompareExchange(ref isPublishing, 0, 1);
         // try to reacquire lock if needed
@@ -205,38 +216,26 @@ namespace Muflone.Eventstore.Persistence
     }
 
     /// <summary>
-    /// Deserializes the event from the raw GetEventStore event to my event.
-    /// Took this from a gist that James Nugent posted on the GetEventStore forums.
+    ///   Deserializes the event from the raw GetEventStore event to my event.
+    ///   Took this from a gist that James Nugent posted on the GetEventStore forums.
     /// </summary>
     /// <param name="metadata"></param>
     /// <param name="data"></param>
     /// <returns></returns>
     private DomainEvent DeserializeEvent(byte[] metadata, byte[] data)
     {
-      if (Newtonsoft.Json.Linq.JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName") == null)
+      if (JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName") == null)
         return null;
-
-      var eventClrTypeName = Newtonsoft.Json.Linq.JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName").Value;
-
+      var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName").Value;
       try
       {
-        return (DomainEvent)Newtonsoft.Json.JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName));
+        return (DomainEvent)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName));
       }
       catch (Exception ex)
       {
         log.LogError(ex.Message);
         return null;
       }
-    }
-
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-      return StartDispatching();
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-      return StopDispatching();
     }
   }
 }
