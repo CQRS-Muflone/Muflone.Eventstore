@@ -36,7 +36,7 @@ namespace Muflone.Eventstore.Persistence
       };
     }
 
-    //This rename is to be consistent with naming convention of EventStore javascript
+    //This rename is needed to be consistent with naming convention of EventStore javascript
     public EventStoreRepository(IEventStoreConnection eventStoreConnection)
       : this(eventStoreConnection, (type, aggregateId) => $"{char.ToLower(type.Name[0]) + type.Name.Substring(1)}-{aggregateId}")
     {
