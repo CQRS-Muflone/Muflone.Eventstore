@@ -49,17 +49,17 @@ namespace Muflone.Eventstore.Persistence
       this.aggregateIdToStreamName = aggregateIdToStreamName;
     }
 
-    public async Task<TAggregate> GetById<TAggregate>(Guid id) where TAggregate : class, IAggregate
+    public async Task<TAggregate> GetById<TAggregate>(IDomainId id) where TAggregate : class, IAggregate
     {
       return await GetById<TAggregate>(id, int.MaxValue);
     }
 
-    public Task<TAggregate> GetById<TAggregate>(Guid id, int version) where TAggregate : class, IAggregate
+    public Task<TAggregate> GetById<TAggregate>(IDomainId id, int version) where TAggregate : class, IAggregate
     {
       if (version <= 0)
         throw new InvalidOperationException("Cannot get version <= 0");
 
-      var streamName = aggregateIdToStreamName(typeof(TAggregate), id);
+      var streamName = aggregateIdToStreamName(typeof(TAggregate), id.Value);
       var aggregate = ConstructAggregate<TAggregate>();
 
       long sliceStart = 0;
@@ -70,10 +70,10 @@ namespace Muflone.Eventstore.Persistence
         currentSlice = eventStoreConnection.ReadStreamEventsForwardAsync(streamName, sliceStart, sliceCount, false).Result;
 
         if (currentSlice.Status == SliceReadStatus.StreamNotFound)
-          throw new AggregateNotFoundException(id, typeof(TAggregate));
+          throw new AggregateNotFoundException(id.Value, typeof(TAggregate));
 
         if (currentSlice.Status == SliceReadStatus.StreamDeleted)
-          throw new AggregateDeletedException(id, typeof(TAggregate));
+          throw new AggregateDeletedException(id.Value, typeof(TAggregate));
 
         sliceStart = currentSlice.NextEventNumber;
 
@@ -82,7 +82,7 @@ namespace Muflone.Eventstore.Persistence
       } while (version >= currentSlice.NextEventNumber && !currentSlice.IsEndOfStream);
 
       if (aggregate.Version != version && version < int.MaxValue)
-        throw new AggregateVersionException(id, typeof(TAggregate), aggregate.Version, version);
+        throw new AggregateVersionException(id.Value, typeof(TAggregate), aggregate.Version, version);
 
       return Task.FromResult(aggregate);
     }
