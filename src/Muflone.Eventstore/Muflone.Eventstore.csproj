@@ -4,24 +4,32 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Version>0.9.3</Version>
+    <Version>1.0.0</Version>
     <Company>CQRS-Muflone</Company>
-    <Authors>Alessandro Colla</Authors>
+    <Authors>Alessandro Colla, Alberto Acerbis</Authors>
     <Description>Muflone repository and event dispatcher for Event Store</Description>
     <NeutralLanguage>en</NeutralLanguage>
     <PackageTags>Eventstore, CQRS, Muflone</PackageTags>
-    <Copyright>Alessandro Colla and contributors</Copyright>
+    <Copyright>Alessandro Colla, Alberto Acerbis and contributors</Copyright>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</PackageProjectUrl>
     <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>Logo.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="EventStore.Client" Version="5.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />
-    <PackageReference Include="Muflone" Version="0.9.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="3.1.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.6" />
+    <PackageReference Include="Muflone" Version="1.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\Logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
