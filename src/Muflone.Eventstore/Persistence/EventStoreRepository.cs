@@ -45,12 +45,12 @@ namespace Muflone.Eventstore.Persistence
             this.aggregateIdToStreamName = aggregateIdToStreamName;
         }
 
-        public async Task<TAggregate> GetByIdAsync<TAggregate>(Guid id) where TAggregate : class, IAggregate
+        public async Task<TAggregate?> GetByIdAsync<TAggregate>(Guid id) where TAggregate : class, IAggregate
         {
             return await GetByIdAsync<TAggregate>(id, int.MaxValue);
         }
 
-        public Task<TAggregate> GetByIdAsync<TAggregate>(Guid id, int version) where TAggregate : class, IAggregate
+        public Task<TAggregate?> GetByIdAsync<TAggregate>(Guid id, int version) where TAggregate : class, IAggregate
         {
             if (version <= 0)
                 throw new InvalidOperationException("Cannot get version <= 0");
@@ -74,24 +74,24 @@ namespace Muflone.Eventstore.Persistence
                 sliceStart = currentSlice.NextEventNumber;
 
                 foreach (var @event in currentSlice.Events)
-                    aggregate.ApplyEvent(DeserializeEvent(@event.OriginalEvent.Metadata, @event.OriginalEvent.Data));
+                    aggregate!.ApplyEvent(DeserializeEvent(@event.OriginalEvent.Metadata, @event.OriginalEvent.Data));
             } while (version >= currentSlice.NextEventNumber && !currentSlice.IsEndOfStream);
 
-            if (aggregate.Version != version && version < int.MaxValue)
+            if (aggregate!.Version != version && version < int.MaxValue)
                 throw new AggregateVersionException(id, typeof(TAggregate), aggregate.Version, version);
 
-            return Task.FromResult(aggregate);
+            return Task.FromResult(aggregate)!;
         }
 
-        private static TAggregate ConstructAggregate<TAggregate>()
+        private static TAggregate? ConstructAggregate<TAggregate>()
         {
-            return (TAggregate)Activator.CreateInstance(typeof(TAggregate), true);
+            return (TAggregate)Activator.CreateInstance(typeof(TAggregate), true)!;
         }
 
         private static object DeserializeEvent(byte[] metadata, byte[] data)
         {
-            var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property(EventClrTypeHeader).Value;
-            return JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName));
+            var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property(EventClrTypeHeader)!.Value;
+            return JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType(((string)eventClrTypeName)!)!)!;
         }
 
         public async Task SaveAsync(IAggregate aggregate, Guid commitId, Action<IDictionary<string, object>> updateHeaders)
@@ -100,7 +100,7 @@ namespace Muflone.Eventstore.Persistence
               {
                 { CommitIdHeader, commitId },
                 { CommitDateHeader, DateTime.UtcNow},
-                { AggregateClrTypeHeader, aggregate.GetType().AssemblyQualifiedName }
+                { AggregateClrTypeHeader, aggregate.GetType().AssemblyQualifiedName! }
               };
             updateHeaders(commitHeaders);
 
@@ -139,7 +139,7 @@ namespace Muflone.Eventstore.Persistence
         private static EventData ToEventData(Guid eventId, object @event, IDictionary<string, object> headers)
         {
             var data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(@event, SerializerSettings));
-            var eventHeaders = new Dictionary<string, object>(headers) { { EventClrTypeHeader, @event.GetType().AssemblyQualifiedName } };
+            var eventHeaders = new Dictionary<string, object>(headers) { { EventClrTypeHeader, @event.GetType().AssemblyQualifiedName! } };
             var metadata = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(eventHeaders, SerializerSettings));
             var typeName = @event.GetType().Name;
             return new EventData(eventId, typeName, true, data, metadata);

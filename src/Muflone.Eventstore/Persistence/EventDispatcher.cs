@@ -25,14 +25,15 @@ namespace Muflone.Eventstore.Persistence
     private readonly ManualResetEventSlim liveDone = new(true);
     private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new();
     private readonly ILogger log;
-    private EventStoreSubscription eventStoreSubscription;
+    private EventStoreSubscription eventStoreSubscription = null!;
     private int isPublishing;
     private Position lastProcessed;
     private volatile bool livePublishingAllowed;
 
     private volatile bool stop;
 
-    public EventDispatcher(ILoggerFactory loggerFactory, IEventStoreConnection store, IEventBus eventBus, IEventStorePositionRepository eventStorePositionRepository)
+    public EventDispatcher(ILoggerFactory loggerFactory, IEventStoreConnection store, IEventBus eventBus,
+        IEventStorePositionRepository eventStorePositionRepository)
     {
       log = loggerFactory?.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
       eventStoreConnection = store ?? throw new ArgumentNullException(nameof(store));
@@ -204,7 +205,7 @@ namespace Muflone.Eventstore.Persistence
       }
     }
 
-    private DomainEvent ProcessRawEvent(ResolvedEvent rawEvent)
+    private DomainEvent? ProcessRawEvent(ResolvedEvent rawEvent)
     {
       if (rawEvent.OriginalEvent.Metadata.Length > 0 && rawEvent.OriginalEvent.Data.Length > 0)
         return DeserializeEvent(rawEvent.OriginalEvent.Metadata, rawEvent.OriginalEvent.Data);
@@ -219,14 +220,14 @@ namespace Muflone.Eventstore.Persistence
     /// <param name="metadata"></param>
     /// <param name="data"></param>
     /// <returns></returns>
-    private DomainEvent DeserializeEvent(byte[] metadata, byte[] data)
+    private DomainEvent? DeserializeEvent(byte[] metadata, byte[] data)
     {
       if (JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName") == null)
         return null;
-      var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName").Value;
+      var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName")!.Value;
       try
       {
-        return (DomainEvent)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName));
+        return (DomainEvent)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName!)!)!;
       }
       catch (Exception ex)
       {
