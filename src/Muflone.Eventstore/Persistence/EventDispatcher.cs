@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using EventStore.ClientAPI;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,10 +20,10 @@ namespace Muflone.Eventstore.Persistence
     private readonly IEventBus eventBus;
     private readonly IEventStoreConnection eventStoreConnection;
     private readonly IEventStorePositionRepository eventStorePositionRepository;
-    private readonly ManualResetEventSlim historicalDone = new ManualResetEventSlim(true);
-    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new ConcurrentQueue<ResolvedEvent>();
-    private readonly ManualResetEventSlim liveDone = new ManualResetEventSlim(true);
-    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new ConcurrentQueue<ResolvedEvent>();
+    private readonly ManualResetEventSlim historicalDone = new(true);
+    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new();
+    private readonly ManualResetEventSlim liveDone = new(true);
+    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new();
     private readonly ILogger log;
     private EventStoreSubscription eventStoreSubscription;
     private int isPublishing;
@@ -192,7 +189,7 @@ namespace Muflone.Eventstore.Persistence
           {
             processedEvent.Headers.Set(Constants.CommitPosition, @event.OriginalPosition.Value.CommitPosition.ToString());
             processedEvent.Headers.Set(Constants.PreparePosition, @event.OriginalPosition.Value.PreparePosition.ToString());
-            eventBus.Publish(processedEvent);
+            eventBus.PublishAsync(processedEvent).GetAwaiter().GetResult();
           }
 
           lastProcessed = @event.OriginalPosition.Value;

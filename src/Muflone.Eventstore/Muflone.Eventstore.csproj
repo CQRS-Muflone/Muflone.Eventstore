@@ -1,35 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Version>1.0.0</Version>
-    <Company>CQRS-Muflone</Company>
-    <Authors>Alessandro Colla, Alberto Acerbis</Authors>
-    <Description>Muflone repository and event dispatcher for Event Store</Description>
-    <NeutralLanguage>en</NeutralLanguage>
-    <PackageTags>Eventstore, CQRS, Muflone</PackageTags>
-    <Copyright>Alessandro Colla, Alberto Acerbis and contributors</Copyright>
-    <PackageLicenseUrl></PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageIcon>Logo.png</PackageIcon>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EventStore.Client" Version="5.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="3.1.6" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.6" />
-    <PackageReference Include="Muflone" Version="1.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\..\Logo.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
+    <PackageReference Include="EventStore.Client" Version="21.2.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Muflone" Version="6.0.4" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
 </Project>
