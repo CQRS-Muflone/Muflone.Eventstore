@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using EventStore.ClientAPI;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,19 +20,20 @@ namespace Muflone.Eventstore.Persistence
     private readonly IEventBus eventBus;
     private readonly IEventStoreConnection eventStoreConnection;
     private readonly IEventStorePositionRepository eventStorePositionRepository;
-    private readonly ManualResetEventSlim historicalDone = new ManualResetEventSlim(true);
-    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new ConcurrentQueue<ResolvedEvent>();
-    private readonly ManualResetEventSlim liveDone = new ManualResetEventSlim(true);
-    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new ConcurrentQueue<ResolvedEvent>();
+    private readonly ManualResetEventSlim historicalDone = new(true);
+    private readonly ConcurrentQueue<ResolvedEvent> historicalQueue = new();
+    private readonly ManualResetEventSlim liveDone = new(true);
+    private readonly ConcurrentQueue<ResolvedEvent> liveQueue = new();
     private readonly ILogger log;
-    private EventStoreSubscription eventStoreSubscription;
+    private EventStoreSubscription eventStoreSubscription = null!;
     private int isPublishing;
     private Position lastProcessed;
     private volatile bool livePublishingAllowed;
 
     private volatile bool stop;
 
-    public EventDispatcher(ILoggerFactory loggerFactory, IEventStoreConnection store, IEventBus eventBus, IEventStorePositionRepository eventStorePositionRepository)
+    public EventDispatcher(ILoggerFactory loggerFactory, IEventStoreConnection store, IEventBus eventBus,
+        IEventStorePositionRepository eventStorePositionRepository)
     {
       log = loggerFactory?.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
       eventStoreConnection = store ?? throw new ArgumentNullException(nameof(store));
@@ -192,7 +190,7 @@ namespace Muflone.Eventstore.Persistence
           {
             processedEvent.Headers.Set(Constants.CommitPosition, @event.OriginalPosition.Value.CommitPosition.ToString());
             processedEvent.Headers.Set(Constants.PreparePosition, @event.OriginalPosition.Value.PreparePosition.ToString());
-            eventBus.Publish(processedEvent);
+            eventBus.PublishAsync(processedEvent).GetAwaiter().GetResult();
           }
 
           lastProcessed = @event.OriginalPosition.Value;
@@ -207,7 +205,7 @@ namespace Muflone.Eventstore.Persistence
       }
     }
 
-    private DomainEvent ProcessRawEvent(ResolvedEvent rawEvent)
+    private DomainEvent? ProcessRawEvent(ResolvedEvent rawEvent)
     {
       if (rawEvent.OriginalEvent.Metadata.Length > 0 && rawEvent.OriginalEvent.Data.Length > 0)
         return DeserializeEvent(rawEvent.OriginalEvent.Metadata, rawEvent.OriginalEvent.Data);
@@ -222,14 +220,14 @@ namespace Muflone.Eventstore.Persistence
     /// <param name="metadata"></param>
     /// <param name="data"></param>
     /// <returns></returns>
-    private DomainEvent DeserializeEvent(byte[] metadata, byte[] data)
+    private DomainEvent? DeserializeEvent(byte[] metadata, byte[] data)
     {
       if (JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName") == null)
         return null;
-      var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName").Value;
+      var eventClrTypeName = JObject.Parse(Encoding.UTF8.GetString(metadata)).Property("EventClrTypeName")!.Value;
       try
       {
-        return (DomainEvent)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName));
+        return (DomainEvent)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(data), Type.GetType((string)eventClrTypeName!)!)!;
       }
       catch (Exception ex)
       {

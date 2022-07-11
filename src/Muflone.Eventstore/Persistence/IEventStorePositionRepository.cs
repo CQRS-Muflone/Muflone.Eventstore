@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace Muflone.Eventstore.Persistence
+﻿namespace Muflone.Eventstore.Persistence
 {
   public interface IEventStorePositionRepository
   {
