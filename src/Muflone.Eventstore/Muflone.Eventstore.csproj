@@ -9,7 +9,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</RepositoryUrl>
     <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</PackageProjectUrl>
-    <Version>6.0.1</Version>
+    <Version>6.0.2</Version>
     <Authors>Alessandro Colla, Alberto Acerbis</Authors>
     <Description>Eventstore implementation for Muflone</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
