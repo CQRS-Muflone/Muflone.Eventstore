@@ -9,7 +9,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</RepositoryUrl>
     <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Eventstore</PackageProjectUrl>
-    <Version>6.0.2</Version>
+    <Version>6.1.1</Version>
     <Authors>Alessandro Colla, Alberto Acerbis</Authors>
     <Description>Eventstore implementation for Muflone</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -31,7 +31,7 @@
     <PackageReference Include="EventStore.Client" Version="21.2.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
-    <PackageReference Include="Muflone" Version="6.0.4" />
+    <PackageReference Include="Muflone" Version="6.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
